@@ -1,52 +1,101 @@
-// 원본 설문 PDF의 B·C 문항을 바탕으로 구성. 시간 입력만 객관식으로 바꾸었습니다.
-// 점수 연결과 해석 문구는 아래 데이터에서 수정할 수 있습니다.
-const SCALE=['전혀 그렇지 않다','그렇지 않다','보통이다','그렇다','매우 그렇다'];
-const B=[
-  {id:'b1',trait:'h1',text:'계획한 시작 시각을 지키지 못하면 계획 전체가 틀어진 것처럼 느낀다.'},
-  {id:'b2',trait:'h2',text:'학업 과제를 시작하기 전에는 부담감이나 거부감을 자주 느낀다.'},
-  {id:'b3',trait:'h3',text:'새로운 일을 시작할 때 정각이나 30분처럼 구분이 뚜렷한 시각을 선호한다.'},
-  {id:'b4',trait:'h2',text:'공부가 부담스러우면 당장 시작하지 않고 피하고 싶어진다.'},
-  {id:'b5',trait:'h1',text:'계획이 조금 어긋나면 처음부터 다시 시작하고 싶어진다.'},
-  {id:'b6',trait:'h3',text:'7시 17분보다 7시 30분이 새로운 일을 시작하기에 자연스럽게 느껴진다.'},
-  {id:'b7',trait:'h1',reverse:true,text:'계획의 일부를 지키지 못했어도 남은 부분을 유연하게 진행할 수 있다.'},
-  {id:'b8',trait:'h3',text:'시작 시각이 애매하면 새로운 시간 구간이 시작될 때까지 기다리고 싶어진다.'},
-  {id:'b9',trait:'h2',text:'과제 시작을 나중으로 미루기로 하면 당장은 마음이 편해진다.'},
-  {id:'b10',trait:null,text:'평소 공부나 과제를 시작할 시간을 구체적으로 정하는 편이다.'}
+import { LIKERT, ITEMS, RECENT_MONTH_PROMPT, SCENARIO_COMMON, SCENARIOS, TRAITS } from './survey-content.mjs';
+import { RESULT_INTRO, FEEDBACK, REFLECTIONS, LIMIT_NOTICE } from './feedback-content.mjs';
+import { analyze, QUESTION_IDS } from './analysis.mjs';
+
+const app = document.querySelector('#app');
+const homeLink = document.querySelector('#home-link');
+const answers = {};
+const pages = [
+  { title: '계획한 시각에 대한 생각', itemIds: ['P1', 'P2', 'P3', 'P4', 'P5'] },
+  { title: '과제를 시작할 때의 마음', itemIds: ['A1', 'A2', 'A3'] },
+  { title: '과제와 감정에 대한 생각', itemIds: ['A4', 'A5', 'A6'] },
+  { title: '시작 시각에 대한 생각', itemIds: ['T1', 'T2', 'T3', 'T4', 'T5'] },
+  { title: '상황에서 시작 시각 고르기', scenarioIds: ['S1', 'S2'] },
+  { title: '다른 상황에서 선택하기', scenarioIds: ['S3', 'S4'] },
 ];
-const COMMON='서울대학교 대학 글쓰기 1 과목의 주간 글쓰기 과제로 짧은 주제 탐구 보고서를 제출해야 합니다. 마감은 내일 오후 1시이고, 현재는 오늘 저녁 7시 17분입니다. 공지·참고 자료·작성 환경이 준비되어 지금 바로 시작할 수 있으며, 다른 약속이나 의무는 없습니다.';
-const LOW='이번 과제는 크게 부담되지 않습니다. 이전에도 몇 번 써 본 형식이라 작성 순서가 대략 그려지고, 평가 기준도 알고 있어 결과도 크게 걱정되지 않습니다.';
-const HIGH='이번 과제는 꽤 부담스럽습니다. 요구 내용과 작성 방법은 알지만, 근거를 정리하고 논리적으로 풀어 쓰는 과정이 까다롭게 느껴지고 평가 결과도 걱정됩니다.';
-const SITUATIONS=[
-  {id:'c1',title:'상황 1 · 시작 시각을 정하지 않았고 과제 부담이 낮을 때',planned:false,heavy:false,context:'오늘 오후, “저녁에 보고서를 써야지”라고 생각했지만 몇 시에 시작할지는 정하지 않았습니다. '+LOW},
-  {id:'c2',title:'상황 2 · 계획한 시각을 놓쳤고 과제 부담이 낮을 때',planned:true,heavy:false,context:'오늘 오후, “저녁 7시 정각에 보고서를 시작하자”고 마음먹었지만 다른 일을 하다 보니 7시 17분이 되었습니다. '+LOW},
-  {id:'c3',title:'상황 3 · 시작 시각을 정하지 않았고 과제 부담이 높을 때',planned:false,heavy:true,context:'오늘 오후, “저녁에 보고서를 써야지”라고 생각했지만 몇 시에 시작할지는 정하지 않았습니다. '+HIGH},
-  {id:'c4',title:'상황 4 · 계획한 시각을 놓쳤고 과제 부담이 높을 때',planned:true,heavy:true,context:'오늘 오후, “저녁 7시 정각에 보고서를 시작하자”고 마음먹었지만 다른 일을 하다 보니 7시 17분이 되었습니다. '+HIGH}
-];
-const TIMES=['바로 시작 (오늘 19:17)','오늘 19:20','오늘 19:30','오늘 20:00','오늘 21:00','내일 09:00','내일 11:00'];
-const REASONS=['계획을 놓쳐서 새로 시작하고 싶었음','과제가 부담스러워 쉬고 싶었음','정각·30분이 편했음','더 준비하고 싶었음','지금 시작할 수 있어서'];
-const PROFILES={
-  h1:{code:'H1',name:'계획 실패 민감성',description:'계획한 시각이나 순서가 어긋났을 때 다시 시작하는 데 영향을 받을 수 있습니다.',title:'놓친 시각 대신 다음 2분을 잡아보세요',guide:'예정 시각이 지났다면 계획을 처음부터 다시 세우기보다, 지금 가능한 가장 작은 행동을 2분만 해 보세요.'},
-  h2:{code:'H2',name:'과제 회피 성향',description:'과제의 부담과 미루고 싶은 마음이 함께 나타날 수 있습니다.',title:'과제를 작은 첫 동작으로 나눠보세요',guide:'과제 전체 대신 자료 열기, 제목 적기처럼 5분 안에 할 수 있는 첫 동작 하나를 정해 보세요.'},
-  h3:{code:'H3',name:'시간 경계점 선호',description:'정각이나 30분처럼 구분이 뚜렷한 시각을 시작점으로 선호할 수 있습니다.',title:'정각 전에 짧은 예열을 해보세요',guide:'정각을 기다리는 동안 자료 한 쪽을 읽거나 문장 한 줄을 적어 보세요. 그 행동도 이미 시작한 것입니다.'}
-};
-const scaleOptions=SCALE.map((label,i)=>({label:`${i+1} · ${label}`,value:i+1}));
-const QUESTIONS=[
-  ...B.map((b,i)=>({id:b.id,part:'B파트',marker:`${i+1} / 10`,text:b.text,hint:'평소 자신의 모습에 가장 가까운 답을 선택해 주세요.',options:scaleOptions})),
-  ...SITUATIONS.flatMap((s,i)=>{
-    const base=`${COMMON} 네 상황은 서로 독립적입니다. ${s.context}`;
-    return [
-      {id:`${s.id}_time`,part:'C파트',marker:`상황 ${i+1}/4 · 시작 시각`,text:'언제 시작하겠습니까?',hint:base,options:TIMES.map((label,value)=>({label,value}))},
-      {id:`${s.id}_feel`,part:'C파트',marker:`상황 ${i+1}/4 · 부담감`,text:'이 과제의 시작이 부담스럽게 느껴진다.',hint:s.context,options:scaleOptions},
-      {id:`${s.id}_avoid`,part:'C파트',marker:`상황 ${i+1}/4 · 회피 욕구`,text:'당장 과제를 시작하지 않고 피하고 싶다.',hint:s.context,options:scaleOptions},
-      {id:`${s.id}_relief`,part:'C파트',marker:`상황 ${i+1}/4 · 미루었을 때`,text:'시작을 미루기로 하면 당장은 마음이 편해질 것 같다.',hint:s.context,options:scaleOptions},
-      {id:`${s.id}_broken`,part:'C파트',marker:`상황 ${i+1}/4 · 계획에 대한 느낌`,text:'계획을 어겼다는 느낌이 든다.',hint:s.context,options:scaleOptions},
-      {id:`${s.id}_reason`,part:'C파트',marker:`상황 ${i+1}/4 · 선택 이유`,text:'시작 시각을 정할 때 가장 중요했던 이유는 무엇입니까?',hint:'가까운 이유를 최대 2개까지 선택해 주세요.',options:REASONS.map((label,value)=>({label,value})),multiple:true}
-    ];
-  })
-];
-const app=document.getElementById('app');let screen='home',step=0,answers={};
-function home(){screen='home';window.scrollTo(0,0);app.innerHTML=`<section class="hero"><div><span class="eyebrow">✦ 나의 학업 시작 패턴 탐색</span><h1>왜 시작은 늘<br><em>정각부터</em>일까요?</h1><p class="lead">계획한 시간을 놓치거나 과제가 부담스러울 때, 우리는 저마다 다른 방식으로 시작을 미룹니다. 객관식 설문으로 나의 경향을 살펴보세요.</p><button class="button" id="start">설문 시작하기</button><div class="hero-meta"><span>B파트 10문항</span><span>C파트 4개 상황</span><span>로그인 없음</span></div></div><div class="visual" aria-hidden="true"><div class="float-card float-two">시작은 언제?<b>지금도 괜찮아요</b></div><div class="clock"><span class="clock-mark mark12">12</span><span class="clock-mark mark3">3</span><span class="clock-mark mark6">6</span><span class="clock-mark mark9">9</span><span class="clock-dot"></span></div><div class="float-card float-one">작은 시작도<b>시작입니다 ✦</b></div></div></section><h2 class="section-title">어떤 점을 알 수 있나요?</h2><section class="features"><article class="feature"><span class="icon">▦</span><h3>세 가지 성향 점수</h3><p>계획 실패 민감성, 과제 회피, 시간 경계점 선호를 각각 살펴봅니다.</p></article><article class="feature"><span class="icon">◷</span><h3>상황별 선택 패턴</h3><p>네 상황에서 선택한 시작 시각과 이유를 간단히 요약합니다.</p></article><article class="feature"><span class="icon">✳</span><h3>실천 가능한 가이드</h3><p>두드러진 경향부터 살피고 부담 없이 시도할 작은 방법을 제안합니다.</p></article></section>`;document.getElementById('start').onclick=()=>{answers={};step=0;survey()}}
-function survey(){screen='survey';window.scrollTo(0,0);const q=QUESTIONS[step],pct=Math.round(step/QUESTIONS.length*100),selected=answers[q.id];app.innerHTML=`<section class="survey-wrap"><div class="survey-head"><h1>${q.part} 설문</h1><span class="step-label">${step+1} / ${QUESTIONS.length}</span></div><div class="progress" role="progressbar" aria-label="설문 진행률" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100"><div class="progress-fill" style="width:${pct}%"></div></div><div class="panel"><div class="question-meta">${q.marker}</div><h2 class="question">${q.text}</h2><p class="hint">${q.hint}</p><div class="options" role="${q.multiple?'group':'radiogroup'}" aria-label="${q.text}">${q.options.map((o,i)=>{const checked=q.multiple?Array.isArray(selected)&&selected.includes(o.value):selected===o.value;return `<label class="option ${checked?'selected':''}"><input type="${q.multiple?'checkbox':'radio'}" name="answer" value="${i}" ${checked?'checked':''}><span>${o.label}</span></label>`}).join('')}</div><p class="error" id="error" role="alert"></p><div class="survey-actions"><button class="button ghost" id="back">이전</button><button class="button" id="next">${step===QUESTIONS.length-1?'결과 보기':'다음'}</button></div></div></section>`;document.querySelectorAll('.option').forEach((el,i)=>{el.querySelector('input').onchange=e=>{if(q.multiple){let values=Array.isArray(answers[q.id])?[...answers[q.id]]:[];if(e.target.checked&&values.length>=2){e.target.checked=false;document.getElementById('error').textContent='최대 2개까지 선택할 수 있습니다.';return}values=e.target.checked?[...values,q.options[i].value]:values.filter(v=>v!==q.options[i].value);answers[q.id]=values}else answers[q.id]=q.options[i].value;document.querySelectorAll('.option').forEach((x,j)=>x.classList.toggle('selected',q.multiple?answers[q.id].includes(q.options[j].value):answers[q.id]===q.options[j].value));document.getElementById('error').textContent=''}});document.getElementById('back').onclick=()=>{if(step===0)home();else{step--;survey()}};document.getElementById('next').onclick=()=>{if(answers[q.id]===undefined||(q.multiple&&answers[q.id].length===0)){document.getElementById('error').textContent='답변을 선택해 주세요.';return}if(step<QUESTIONS.length-1){step++;survey()}else results()}}
-function analyze(){const scores={};for(const key of Object.keys(PROFILES)){const items=B.filter(x=>x.trait===key);scores[key]=items.reduce((sum,x)=>sum+(x.reverse?6-answers[x.id]:answers[x.id]),0)/items.length}const ranked=Object.keys(scores).sort((a,b)=>scores[b]-scores[a]),top=scores[ranked[0]],prominent=ranked.filter(k=>top-scores[k]<=0.25);const now=SITUATIONS.filter(s=>answers[`${s.id}_time`]===0).length,boundary=SITUATIONS.filter(s=>[2,3,4,5,6].includes(answers[`${s.id}_time`])).length,nextDay=SITUATIONS.filter(s=>answers[`${s.id}_time`]>=5).length;const reasons=REASONS.map((_,i)=>SITUATIONS.filter(s=>answers[`${s.id}_reason`].includes(i)).length);const mean=(ids)=>ids.reduce((sum,id)=>sum+answers[id],0)/ids.length;const byId=(field)=>SITUATIONS.map(s=>`${s.id}_${field}`);return{scores,ranked,prominent,now,boundary,nextDay,reasons,feel:mean(byId('feel')),avoid:mean(byId('avoid')),relief:mean(byId('relief')),broken:mean(byId('broken'))}}
-function results(){screen='result';window.scrollTo(0,0);const d=analyze(),names=d.prominent.map(k=>PROFILES[k].name).join(' · '),reasonOrder=REASONS.map((_,i)=>i).sort((a,b)=>d.reasons[b]-d.reasons[a]),frequent=reasonOrder.filter(i=>d.reasons[i]>0).slice(0,2).map(i=>`${REASONS[i]} (${d.reasons[i]}회)`);const planDiff=answers.c2_time-answers.c1_time,burdenDiff=answers.c3_time-answers.c1_time;app.innerHTML=`<section class="results-wrap"><span class="result-kicker">나의 설문 결과</span><h1>나의 시작 패턴 살펴보기</h1><p class="result-intro">세 성향의 점수와 네 상황에서의 선택을 함께 살펴보세요. 한 가지 유형으로 확정하지 않습니다.</p><article class="panel result-card"><h2>세 가지 성향 점수</h2>${d.ranked.map(k=>`<div class="score-row"><div class="score-top"><span>${PROFILES[k].code} · ${PROFILES[k].name}</span><strong>${d.scores[k].toFixed(1)} / 5</strong></div><div class="bar" role="meter" aria-label="${PROFILES[k].name}" aria-valuemin="1" aria-valuemax="5" aria-valuenow="${d.scores[k].toFixed(1)}"><span style="width:${d.scores[k]/5*100}%"></span></div></div>`).join('')}<p class="score-note">B파트 관련 문항의 산술평균입니다. 7번 문항은 역채점했습니다. 10번은 일반적인 계획 습관을 묻는 보조 문항으로 세 성향 점수에는 넣지 않았습니다.</p></article><article class="panel result-card"><h2>상대적으로 두드러진 특징</h2><div class="highlight"><strong>${names}</strong>${d.prominent.map(k=>PROFILES[k].description).join(' ')}</div><p class="score-note">최고 점수와 0.25점 이내인 성향을 함께 표시합니다. 이 기준은 첫 버전의 표시 규칙이며 진단 기준이 아닙니다.</p></article><article class="panel result-card"><h2>상황별 선택 요약</h2><ul class="summary-list"><li>4개 상황 중 바로 시작 ${d.now}회, 정각·30분 선택 ${d.boundary}회, 다음 날 시작 ${d.nextDay}회</li><li>부담감 평균 ${d.feel.toFixed(1)}점, 회피 욕구 평균 ${d.avoid.toFixed(1)}점, 미루었을 때 안도감 평균 ${d.relief.toFixed(1)}점, 계획을 어겼다는 느낌 평균 ${d.broken.toFixed(1)}점</li><li>자주 고른 이유: ${frequent.length?frequent.join(' · '):'없음'}</li><li>부담이 낮은 두 상황에서는 ${planDiff>0?'계획한 시간을 놓친 상황에서 더 늦은 시각을 골랐습니다.':planDiff<0?'계획한 시간을 놓친 상황에서 더 이른 시각을 골랐습니다.':'계획 여부와 관계없이 같은 시작 시각을 골랐습니다.'}</li><li>시작 시각을 정하지 않은 두 상황에서는 ${burdenDiff>0?'부담이 큰 과제에서 더 늦은 시각을 골랐습니다.':burdenDiff<0?'부담이 큰 과제에서 더 이른 시각을 골랐습니다.':'부담 수준과 관계없이 같은 시작 시각을 골랐습니다.'}</li></ul></article><article class="panel result-card"><h2>나에게 맞는 작은 시도</h2><div class="guide">${d.ranked.map((k,i)=>`<div class="guide-item ${i===0?'primary':''}"><h3>${PROFILES[k].title}${i===0?'<span class="tag">먼저 살펴보기</span>':''}</h3><p>${PROFILES[k].guide}</p></div>`).join('')}</div><p class="disclaimer">미루기 행동이 모두 고쳐야 할 문제는 아닙니다. 이 결과는 자기이해를 위한 참고자료이며 심리적 진단이 아닙니다.</p></article><div class="result-actions"><button class="button" id="restart">다시 설문하기</button><button class="button secondary" id="go-home">처음으로</button></div></section>`;document.getElementById('restart').onclick=()=>{answers={};step=0;survey()};document.getElementById('go-home').onclick=home}
-document.getElementById('home-link').onclick=e=>{e.preventDefault();home()};home();
+let page = -1;
+
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
+}
+
+function goTop() { window.scrollTo(0, 0); }
+
+function renderHome() {
+  page = -1;
+  app.innerHTML = `
+    <section class="hero"><div>
+      <p class="eyebrow">학업 시작을 이해하는 짧은 시간</p>
+      <h1>시작은 왜<br><em>그 시각</em>이어야 할까?</h1>
+      <p class="lead">계획한 시각을 놓쳤을 때, 과제가 부담스러울 때, 정각을 기다릴 때. 평소 생각과 가상 상황에서의 선택을 살펴보세요.</p>
+      <button class="button" id="start">설문 시작하기</button>
+      <div class="hero-meta"><span>평소 문항 16개</span><span>상황 4개 · 선택 8개</span><span>로그인 없이 바로 결과 확인</span></div>
+    </div><div class="visual" aria-hidden="true"><div class="clock"><span class="clock-dot"></span><span class="clock-mark mark12">12</span><span class="clock-mark mark3">3</span><span class="clock-mark mark6">6</span><span class="clock-mark mark9">9</span></div><div class="float-card float-one"><b>19:17</b>지금 시작해도 될까?</div><div class="float-card float-two"><b>20:00</b>정각이 더 편할까?</div></div></section>
+    <h2 class="section-title">내 선택을 차분히 살펴보기</h2>
+    <section class="features"><article class="feature"><span class="icon">①</span><h3>평소 생각</h3><p>최근 한 달의 학업 시작 경험을 5점 척도로 돌아봅니다.</p></article><article class="feature"><span class="icon">②</span><h3>가상 상황</h3><p>서로 다른 네 상황에서 시작 시각과 이유를 고릅니다.</p></article><article class="feature"><span class="icon">③</span><h3>나에게 맞는 제안</h3><p>세 영역의 응답과 선택을 함께 보고, 필요한 전략을 직접 고를 수 있습니다.</p></article></section>`;
+  document.querySelector('#start').addEventListener('click', () => { page = 0; renderPage(); });
+  goTop();
+}
+
+function choiceBlock(id, question, options, number) {
+  return `<fieldset class="question-block" data-question="${id}"><legend><span class="question-number">${number}</span>${escapeHtml(question)}</legend><div class="options">${options.map((option, index) => {
+    const value = index + 1;
+    const checked = answers[id] === value;
+    return `<label class="option${checked ? ' selected' : ''}"><input type="radio" name="${id}" value="${value}" ${checked ? 'checked' : ''}><span>${escapeHtml(option)}</span></label>`;
+  }).join('')}</div></fieldset>`;
+}
+
+function renderPage() {
+  const config = pages[page];
+  const ids = config.itemIds || config.scenarioIds.flatMap((id) => [`${id}_time`, `${id}_reason`]);
+  const answered = QUESTION_IDS.filter((id) => answers[id] !== undefined).length;
+  const content = config.itemIds
+    ? config.itemIds.map((id, index) => {
+      const item = ITEMS.find((entry) => entry.id === id);
+      return choiceBlock(id, item.text, LIKERT, index + 1);
+    }).join('')
+    : config.scenarioIds.map((id, index) => {
+      const scenario = SCENARIOS.find((entry) => entry.id === id);
+      return `<section class="scenario-card"><h2>${escapeHtml(scenario.title)}</h2><p>${escapeHtml(scenario.context)}</p>${choiceBlock(`${id}_time`, scenario.timeQuestion, scenario.timeOptions, index * 2 + 1)}${choiceBlock(`${id}_reason`, scenario.reasonQuestion, scenario.reasonOptions, index * 2 + 2)}</section>`;
+    }).join('');
+  app.innerHTML = `<section class="survey-wrap"><div class="survey-head"><h1>${escapeHtml(config.title)}</h1><span class="step-label">${page + 1} / ${pages.length} 페이지</span></div><div class="progress" role="progressbar" aria-label="설문 진행률" aria-valuemin="0" aria-valuemax="24" aria-valuenow="${answered}"><div class="progress-fill" style="width:${answered / 24 * 100}%"></div></div><p class="progress-caption">전체 24개 응답 중 ${answered}개 완료</p><p class="hint">${escapeHtml(config.itemIds ? RECENT_MONTH_PROMPT : SCENARIO_COMMON)}</p><div class="panel">${content}</div><p class="error" id="form-error" role="alert"></p><div class="survey-actions"><button class="button secondary" id="back">이전</button><button class="button" id="next">${page === pages.length - 1 ? '결과 보기' : '다음'}</button></div></section>`;
+  app.querySelectorAll('input[type="radio"]').forEach((input) => input.addEventListener('change', (event) => {
+    answers[event.target.name] = Number(event.target.value);
+    event.target.closest('.options').querySelectorAll('.option').forEach((label) => label.classList.toggle('selected', label.contains(event.target)));
+    const done = QUESTION_IDS.filter((id) => answers[id] !== undefined).length;
+    const progress = app.querySelector('.progress');
+    progress.setAttribute('aria-valuenow', done);
+    progress.querySelector('.progress-fill').style.width = `${done / 24 * 100}%`;
+    app.querySelector('.progress-caption').textContent = `전체 24개 응답 중 ${done}개 완료`;
+    app.querySelector('#form-error').textContent = '';
+  }));
+  app.querySelector('#back').addEventListener('click', () => { page = page === 0 ? -1 : page - 1; page === -1 ? renderHome() : renderPage(); });
+  app.querySelector('#next').addEventListener('click', () => {
+    const missing = ids.find((id) => answers[id] === undefined);
+    if (missing) {
+      app.querySelector('#form-error').textContent = '이 페이지의 모든 문항에 답해 주세요.';
+      app.querySelector(`[data-question="${missing}"]`).scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+    if (page < pages.length - 1) { page += 1; renderPage(); }
+    else renderResults();
+  });
+  goTop();
+}
+
+function renderResults() {
+  const result = analyze(answers);
+  const traits = TRAITS.map((trait) => {
+    const score = result.scores[trait.id];
+    const feedback = FEEDBACK[trait.id];
+    return `<article class="panel trait-card"><div class="trait-heading"><h3>${escapeHtml(trait.name)}</h3><strong>${score.toFixed(1)} / 5.0</strong></div><div class="bar" role="img" aria-label="5점 만점 중 ${score.toFixed(1)}점"><span style="width:${score / 5 * 100}%"></span></div><p class="trait-description">${escapeHtml(trait.description)}</p><p>${escapeHtml(feedback[result.levels[trait.id]])}</p><p class="match-note">${escapeHtml(feedback[result.matches[trait.id] ? 'MATCH' : 'NO_MATCH'])}</p></article>`;
+  }).join('');
+  const situations = result.situations.map((situation) => `<li><strong>${escapeHtml(situation.title)}</strong><span>${escapeHtml(situation.timeLabel)} · ${situation.delayMinutes === null ? '지연 시간 미상' : situation.delayMinutes === 0 ? '바로 시작' : `${situation.delayMinutes}분 뒤 시작`}</span><small>선택 이유: ${escapeHtml(situation.reasonLabel)}</small></li>`).join('');
+  const strategies = result.strategies.length ? result.strategies.map((strategy) => `<article class="guide-item"><span class="strategy-label">${escapeHtml(strategy.traitName)} · ${strategy.mode === 'MATCH' ? '상황 선택과 연결된 제안' : '선택적으로 알아보기'}</span><h3>${escapeHtml(strategy.title)}</h3><p>${escapeHtml(strategy.text)}</p></article>`).join('') : '<p class="quiet">이번 응답에서 제안 조건에 해당하는 전략 카드는 없습니다. 필요할 때 자신의 경험을 바탕으로 방법을 선택해 보세요.</p>';
+  app.innerHTML = `<section class="results-wrap"><span class="result-kicker">나의 응답 살펴보기</span><h1>학업 시작 성향 결과</h1><p class="result-intro">${escapeHtml(RESULT_INTRO)}</p><section class="result-section"><h2>평소 응답과 상황 선택</h2><p class="section-lead">각 점수는 해당 문항에 대한 동의 경향입니다. 아래 세 영역을 각각 살펴보세요.</p><div class="trait-grid">${traits}</div></section><section class="result-section"><h2>네 상황에서 고른 시작 시각</h2><ul class="situation-list">${situations}</ul></section><section class="result-section"><h2>함께 살펴볼 점</h2><div class="insight-list">${result.extras.map((text) => `<p>${escapeHtml(text)}</p>`).join('')}</div></section><section class="result-section"><h2>필요할 때 시도할 방법</h2><p class="section-lead">상황 선택과 연결된 방법을 먼저 표시하고, 관련 점수가 높을 때는 선택적으로 살펴볼 방법을 이어서 표시합니다.</p><div class="guide">${strategies}</div></section><section class="result-section"><h2>나에게 묻기</h2><ol class="reflection-list">${REFLECTIONS.map((text) => `<li>${escapeHtml(text)}</li>`).join('')}</ol></section><aside class="limit-notice"><h2>결과를 읽을 때</h2><p>${escapeHtml(LIMIT_NOTICE)}</p></aside><div class="result-actions"><button class="button" id="restart">처음부터 다시 하기</button></div></section>`;
+  app.querySelector('#restart').addEventListener('click', () => { for (const key of Object.keys(answers)) delete answers[key]; renderHome(); });
+  goTop();
+}
+
+homeLink.addEventListener('click', (event) => { event.preventDefault(); renderHome(); });
+renderHome();

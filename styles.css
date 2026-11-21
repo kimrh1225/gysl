@@ -138,6 +138,44 @@ footer { padding: 30px 24px; text-align: center; color: var(--muted); font-size:
 .disclaimer { margin: 26px 0 0; color: var(--muted); font-size: 14px; line-height: 1.6; }
 .result-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 32px; }
 
+.progress-caption { margin: -24px 0 24px; color: var(--muted); font-size: 13px; }
+.survey-wrap > .hint { margin-bottom: 24px; }
+.question-block { min-width: 0; margin: 0; padding: 28px 0; border: 0; border-bottom: 1px solid #e7e7eb; }
+.question-block:first-child { padding-top: 0; }
+.question-block:last-child { padding-bottom: 0; border-bottom: 0; }
+.question-block legend { display: block; width: 100%; padding: 0 0 18px; font-size: 20px; font-weight: 600; line-height: 1.45; letter-spacing: -.025em; word-break: keep-all; }
+.question-number { display: inline-flex; justify-content: center; align-items: center; width: 28px; height: 28px; margin-right: 10px; border-radius: 50%; background: #eaf3ff; color: var(--blue); font-size: 14px; vertical-align: 2px; }
+.scenario-card + .scenario-card { margin-top: 42px; padding-top: 38px; border-top: 2px solid #e7e7eb; }
+.scenario-card h2 { margin: 0 0 8px; font-size: 23px; letter-spacing: -.03em; }
+.scenario-card > p { margin: 0 0 30px; color: #515154; font-size: 16px; line-height: 1.65; word-break: keep-all; }
+.scenario-card .question-block + .question-block { padding-top: 30px; }
+.result-section { margin-top: 54px; }
+.result-section > h2, .limit-notice h2 { margin: 0 0 12px; font-size: 27px; letter-spacing: -.035em; }
+.section-lead { margin: 0 0 22px; color: var(--muted); font-size: 15px; line-height: 1.6; }
+.trait-grid { display: grid; gap: 16px; }
+.trait-card { padding: 30px; font-size: 16px; line-height: 1.65; }
+.trait-card p { margin: 16px 0 0; }
+.trait-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
+.trait-heading h3 { margin: 0; font-size: 23px; letter-spacing: -.025em; }
+.trait-heading strong { color: var(--blue); font-size: 22px; white-space: nowrap; }
+.trait-description { color: var(--muted); }
+.match-note { padding: 17px 20px; border-radius: 12px; background: #f5f8fc; }
+.situation-list { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; }
+.situation-list li { display: grid; gap: 6px; padding: 20px 23px; border: 1px solid var(--line); border-radius: 16px; background: #fff; }
+.situation-list strong { font-size: 17px; }
+.situation-list span { color: var(--blue); font-weight: 600; }
+.situation-list small { color: #515154; font-size: 14px; line-height: 1.5; }
+.insight-list { display: grid; gap: 10px; }
+.insight-list p { margin: 0; padding: 18px 22px; border-left: 3px solid var(--blue); background: #fff; color: #424245; line-height: 1.65; }
+.strategy-label { display: block; margin-bottom: 11px; color: var(--blue); font-size: 13px; font-weight: 600; }
+.guide-item { background: #fff; }
+.quiet { color: var(--muted); line-height: 1.6; }
+.reflection-list { margin: 0; padding: 18px 24px 18px 44px; border-radius: 18px; background: #fff; line-height: 1.75; }
+.reflection-list li { padding-left: 6px; margin: 9px 0; }
+.limit-notice { margin-top: 54px; padding: 26px 30px; border-radius: 18px; background: #e9e9ed; }
+.limit-notice h2 { font-size: 20px; }
+.limit-notice p { margin: 0; color: #515154; font-size: 14px; line-height: 1.7; }
+
 @media (max-width: 760px) {
   .topbar { padding: 0 20px; }
   .hero { padding: 72px 20px 0; }
@@ -159,6 +197,10 @@ footer { padding: 30px 24px; text-align: center; color: var(--muted); font-size:
   .question { font-size: 22px; }
   .results-wrap h1 { font-size: 34px; }
   .result-card h2 { font-size: 22px; }
+  .question-block legend { font-size: 18px; }
+  .trait-card { padding: 24px; }
+  .trait-heading h3 { font-size: 20px; }
+  .trait-heading strong { font-size: 20px; }
 }
 
 @media (max-width: 420px) {
